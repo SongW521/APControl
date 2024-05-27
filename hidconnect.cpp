@@ -67,11 +67,8 @@ std::string bytesToHexString(const unsigned char* bytes, size_t length)
 }
 void HidConnect::sendCmd(CmdType cmd)
 {
-    char sendData[8];
-    for (int i=0;i<8;i++) {
-        sendData[i] = cmd.byte[i];
-    }
     std::vector<unsigned char> data(std::begin(cmd.byte), std::end(cmd.byte));
+    data.insert(data.begin(), 0x00);
     if (hidDev.isOpened()) {
         // 调用 HidDevice 的 write 函数发送数据
         int bytesWritten = hidDev.write(data);
@@ -79,7 +76,7 @@ void HidConnect::sendCmd(CmdType cmd)
             QMessageBox::critical(nullptr, "错误", "发送失败", QMessageBox::Yes);
         } else {
             for (int i = 0; i < 8; ++i) {
-                std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(uint8_t(sendData[i])) << " ";
+                std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(uint8_t(data[i])) << " ";
             }
             std::cout << std::endl;
         }
@@ -91,10 +88,10 @@ void HidConnect::sendCmd(CmdType cmd)
 CmdType HidConnect::recCmd()
 {
     CmdType cmd = {0};
-    std::string recData;
+    std::vector<unsigned char> recData;
     recData = hidDev.read(2000);
     for (int i=0;i<8;i++) {
-        cmd.byte[i] = recData[i];
+        cmd.byte[i] = recData[i+1];
     }
     return cmd;
 }

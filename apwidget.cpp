@@ -83,6 +83,7 @@ void APWidget::on_readRangeBT_clicked()
 {
     DevId = (uchar)ui->devSecCB->currentIndex();
     SysCmd = setSystemCommand(DevId,0x04);
+    Dev_1->sendCmd(SysCmd);
     debugCmd(SysCmd);
 }
 

@@ -74,9 +74,9 @@ int            HidDevice::getInterface()                                        
 bool           HidDevice::isOpened()                                                     const { return this->opened;                   }
 int            HidDevice::readAvailable()                                                const { return this->readFifoBuffer.size();    }
 
-std::string    HidDevice::read(int timeout)
+std::vector<unsigned char>    HidDevice::read(int timeout)
 {
-    std::string ret = "";
+    std::vector<unsigned char> ret = std::vector<unsigned char>();
 
     if( !this->isInitialized() )
     {
@@ -240,7 +240,7 @@ HidDevice::HidDevice(HidDevice&& mvCtor)
     mvCtor.interfaceNumber            = 0;
     mvCtor.internalReadBufferSize     = 0;
     mvCtor.internalWriteBufferSize    = 0;
-    mvCtor.readFifoBuffer             = std::queue<std::string>();
+    mvCtor.readFifoBuffer             = std::queue<std::vector<unsigned char>>();
     mvCtor.deviceErrorCallback        = NULL;
     mvCtor.backgroundReader           = NULL;
 
@@ -351,7 +351,7 @@ bool HidDevice::open()
     this->opened          = true;
     this->backgroundReader->stop();
     this->backgroundReader->setParent(this);
-    this->readFifoBuffer  = std::queue<std::string>(); // flush
+    this->readFifoBuffer  = std::queue<std::vector<unsigned char>>(); // flush
     this->backgroundReader->run();
 
     return this->opened;
@@ -732,7 +732,7 @@ void HidDevice::HidDeviceReaderThread::onStartHandler()
 {
     if( this->device != NULL )
     {
-        std::string tempBuf;
+        std::vector<unsigned char> tempBuf;
 
         #ifdef OS_WINDOWS
 
@@ -751,7 +751,7 @@ void HidDevice::HidDeviceReaderThread::onStartHandler()
                     memset(&(readOL), 0, sizeof(readOL));
                     readOL.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
                     bytesRead     = 0;
-                    tempBuf       = "";
+                    tempBuf       = std::vector<unsigned char>();
                     tempBuf.resize(this->device->internalReadBufferSize, 0);
 
                     ResetEvent(readOL.hEvent);

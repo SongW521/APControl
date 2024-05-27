@@ -475,7 +475,7 @@ class HidDevice
         unsigned short                  internalReadBufferSize;                      /*!< stores the device's read buffer size. */
         unsigned short                  internalWriteBufferSize;                     /*!< stores the device's write buffer size. */
         mutable bool                    opened;                                      /*!< stores the device file's status. */
-        std::queue<std::string>         readFifoBuffer;                              /*!< internal read fifo buffer. */
+        std::queue<std::vector<unsigned char>>         readFifoBuffer;                              /*!< internal read fifo buffer. */
         HidDeviceReaderThread          *backgroundReader;                            /*!< backgroud reader system. */
         void                          (*deviceErrorCallback) (HidDevice, HidError);  /*!< error callback function's pointer. */
 
@@ -550,7 +550,7 @@ class HidDevice
          * - timeout == 0 : returns IMMEDIATELY with or without value
          * - timeout  > 0 : waits until read value is available or TIME is OUT
          */
-        std::string     read(int timeout = 0 );
+        std::vector<unsigned char>     read(int timeout = 0 );
 
         /*!
          * Returns the internal fifo buffer's size.
