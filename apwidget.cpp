@@ -7,13 +7,39 @@ APWidget::APWidget(QWidget *parent)
     , ui(new Ui::APWidget)
 {
     ui->setupUi(this);
-    Dev_1 = new HidConnect();
-    Dev_2 = new HidConnect();
+
+    //建立并开启接收数据线程
+    for (int i = 0; i < 2; i ++) {
+        Dev[i] = new HidConnect();
+        recThread[i] = new RecThread(Dev[i], i);
+        thread[i] = new QThread();
+        recThread[i]->moveToThread(thread[i]);
+        connect(thread[i], &QThread::started, recThread[i], &RecThread::RecPoll);
+        connect(recThread[i], &RecThread::CmdToMainSignal, this, &APWidget::CmdToMainSlot);
+        connect(this, &APWidget::stopPollSignal, recThread[i], &RecThread::stopPollSlot);
+        //开启接收数据线程
+        thread[i]->start();
+    }
 }
 
 APWidget::~APWidget()
 {
+    deleteOb();
+}
+
+void APWidget::deleteOb()
+{
     delete ui;
+    for (int i = 0; i < 2; i ++) {
+        //退出线程
+        emit stopPollSignal(i);
+        thread[i]->quit();
+        thread[i]->wait();
+        //释放资源
+        delete thread[i];
+        delete recThread[i];
+        delete Dev[i];
+    }
 }
 
 void APWidget::debugCmd(CmdType cmd)
@@ -29,38 +55,28 @@ void APWidget::on_linkBT_clicked()
 {
     DevId = (uchar)ui->devSecCB->currentIndex();
     if (!ConStatus) {
-        if (DevId == 0) {
-            if (Dev_1->conDev()) {
-                ui->linkBT->setStyleSheet("background-color: rgb(0, 200, 0);");
-                ui->linkBT->setText("连接开启");
-                ui->devSecCB->setEnabled(false);
-                ConStatus = 1;
-                qDebug() << "open success";
+        if (Dev[DevId]->conDev()) {
+            ui->linkBT->setStyleSheet("background-color: rgb(0, 200, 0);");
+            ui->linkBT->setText("连接开启");
+            ui->devSecCB->setEnabled(false);
+            ConStatus = 1;
+            qDebug() << "DevId:1  open success";
 
-                //建立并启动接收命令线程
-                recThread = new RecThread(Dev_1);
-                thread = new QThread();
-                recThread->moveToThread(thread);
-                connect(thread, &QThread::started, recThread, &RecThread::RecPoll);
-                connect(recThread, &RecThread::CmdToMainSignal, this, &APWidget::CmdToMainSlot);
-                thread->start();
-                //发送读设备指令
-                SysCmd = setSystemCommand(DevId,0x01);
-                Dev_1->sendCmd(SysCmd);
-//                debugCmd(SysCmd);
-            }
+            //读取设备信息
+            SysCmd = setSystemCommand(DevId,0x01);
+            Dev[DevId]->sendCmd(SysCmd);
         }
-
     } else {
-        if (Dev_1->disconDev()) {
+        if (Dev[DevId]->disconDev()) {
             ui->linkBT->setStyleSheet("background-color: rgb(200, 0, 0);");
             ui->linkBT->setText("连接关闭");
-            ui->devSecCB->setEnabled(true);
+            ui->devIDLE->setText("未连接");
+            ui->realRangeLE_1->setText("0 V");
+            ui->realRangeLE_2->setText("0 V");
+//            ui->devSecCB->setEnabled(true);
             ConStatus = 0;
             qDebug() << "close success";
-            //发送断开指令
         }
-
     }
 }
 
@@ -71,6 +87,7 @@ void APWidget::on_exitBT_clicked()
                                                     QMessageBox::Yes | QMessageBox::No);
     if (reply == QMessageBox::Yes) {
         // 用户选择了继续
+        deleteOb();
         qApp->quit();
     } else {
         // 用户选择了取消
@@ -79,19 +96,10 @@ void APWidget::on_exitBT_clicked()
 }
 
 
-void APWidget::on_readRangeBT_clicked()
-{
-    DevId = (uchar)ui->devSecCB->currentIndex();
-    SysCmd = setSystemCommand(DevId,0x04);
-    Dev_1->sendCmd(SysCmd);
-    debugCmd(SysCmd);
-}
-
 
 void APWidget::on_setInputBT_clicked()
 {
     //获取参数
-    DevId = (uchar)ui->devSecCB->currentIndex();
     InputMode1 = (uchar)ui->inputTypeCB_1->currentIndex();
     InputMode2  = (uchar)ui->inputTypeCB_2->currentIndex();
     Coupler1 = (uchar)ui->dcRB_1->isChecked();
@@ -99,24 +107,27 @@ void APWidget::on_setInputBT_clicked()
     InputRange1 = (uchar)((ui->inputRangeCB_1->currentIndex() + 15) % 16);
     InputRange2 = (uchar)((ui->inputRangeCB_2->currentIndex() + 15) % 16);
     if(InputMode1 > 2) InputMode1  = InputMode1 + 1;
-
+    //设置ADC
     AdcCmd = setADCCommand(DevId,Coupler1,Coupler2,InputMode1,InputMode2,InputRange1,InputRange2);
-    debugCmd(AdcCmd);
+    Dev[DevId]->sendCmd(AdcCmd);
+    sleep(0.1);
+    //读取实际量程
+    SysCmd = setSystemCommand(DevId,0x04);
+    Dev[DevId]->sendCmd(SysCmd);
 }
 
 
 void APWidget::on_setOutputBT_clicked()
 {
     //获取参数
-    DevId = (uchar)ui->devSecCB->currentIndex();
     OutputMode1  = (uchar)ui->outputTypeCB_1->currentIndex();
     OutputMode2  = (uchar)ui->outputTypeCB_2->currentIndex();
     OutputRange1 = (uchar)((ui->outputRangeCB_1->currentIndex() + 15) % 16);
     OutputRange2 = (uchar)((ui->outputRangeCB_2->currentIndex() + 15) % 16);
     if(OutputMode1 > 2) OutputMode1  = OutputMode1 + 1;
-
+    //设置DAC
     DacCmd = setDACCommand(DevId,OutputMode1,OutputMode2,OutputRange1,OutputRange2);
-    debugCmd(DacCmd);
+    Dev[DevId]->sendCmd(DacCmd);
 }
 
 
@@ -306,7 +317,17 @@ void APWidget::on_cleanFlashBT_clicked()
 
 void APWidget::CmdToMainSlot(CmdType cmd)
 {
+    std::cout <<"receive  ";
     debugCmd(cmd);
+    if (cmd.byte[1] == 0x81) {
+        QString infor = getDevConfig(cmd);
+        ui->devIDLE->setText(infor);
+    } else if (cmd.byte[1] == 0x84) {
+        QString realRange[2];
+        getDevRealRange(cmd,realRange);
+        ui->realRangeLE_1->setText(realRange[0]);
+        ui->realRangeLE_2->setText(realRange[1]);
+    }
 }
 
 

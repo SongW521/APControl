@@ -13,7 +13,7 @@
 
 #include "CtrlCommand.h"
 
-
+#include <QDebug>
 
 //设置CRC校验值
 uchar setCRC(CmdType aimCmd)
@@ -193,21 +193,29 @@ bool CRCVerify(CmdType aimCmd)
 QString getDevConfig(CmdType rceCmd)
 {
     QString devConfig = " ";
-    devConfig = QString("型号:%1%2 -- 版本:%3 -- 通道: %4进%5出" )
+    devConfig = QString("(GT aduio) 型号:%1%2 -- 版本:%3 -- 通道: %4进%5出" )
+                    .arg(rceCmd.byte[3], 2, 16, QLatin1Char('0'))
                     .arg(rceCmd.byte[4], 2, 16, QLatin1Char('0'))
                     .arg(rceCmd.byte[5], 2, 16, QLatin1Char('0'))
-                    .arg(rceCmd.byte[6], 2, 16, QLatin1Char('0'))
-                    .arg(rceCmd.byte[3] >> 4, 2, 16)
-                    .arg(rceCmd.byte[4] & 0x0F, 2, 16);
+                    .arg(rceCmd.byte[2] >> 4, 2, 16)
+                    .arg(rceCmd.byte[2] & 0x0F, 2, 16);
 
     return devConfig;
 }
 
 //解析设备真实量程
-QString getDevRealRange(CmdType rceCmd)
+void getDevRealRange(CmdType rceCmd, QString *realRange)
 {
-    QString range = " ";
+    QString stdRange[10] = {"AUTO","89.6 V","44.8 V","22.4 V","11.2 V"
+                        ,"5.6 V","2.8 V","1.4 V","0.7 V","0.35 V"};
+
+    int index1 = ((rceCmd.byte[3] & 0x0F) + 1) % 16;
+    int index2 = ((rceCmd.byte[5] & 0x0F) + 1) % 16;
+
+    qDebug() << index1 << " "  <<index2  ;
+
+    realRange[0] = stdRange[index1];
+    realRange[1] = stdRange[index2];
 
 
-    return range;
 }

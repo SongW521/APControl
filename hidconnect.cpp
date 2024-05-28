@@ -75,8 +75,9 @@ void HidConnect::sendCmd(CmdType cmd)
         if (!bytesWritten) {
             QMessageBox::critical(nullptr, "错误", "发送失败", QMessageBox::Yes);
         } else {
+            std::cout <<"send     ";
             for (int i = 0; i < 8; ++i) {
-                std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(uint8_t(data[i])) << " ";
+                std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(uint8_t(data[i+1])) << " ";
             }
             std::cout << std::endl;
         }

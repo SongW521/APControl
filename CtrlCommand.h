@@ -18,7 +18,7 @@ CmdType setFlashCommand(uchar devID, uchar operate);
 // 指令解析函数
 bool CRCVerify(CmdType aimCmd);
 QString getDevConfig(CmdType rceCmd);
-QString getDevRealRange(CmdType rceCmd);
+void getDevRealRange(CmdType rceCmd, QString *realRange);
 
 
 #endif // CTRLCOMMAND_H

@@ -76,7 +76,7 @@ int            HidDevice::readAvailable()                                       
 
 std::vector<unsigned char>    HidDevice::read(int timeout)
 {
-    std::vector<unsigned char> ret = std::vector<unsigned char>();
+    std::vector<unsigned char> ret; //= std::vector<unsigned char>();
 
     if( !this->isInitialized() )
     {
@@ -418,9 +418,6 @@ int HidDevice::write(std::vector<unsigned char> data) const
     OVERLAPPED ol;
     memset(&ol, 0, sizeof(ol));
     tempData.resize(this->internalWriteBufferSize, 0);
-    for (int i = 0; i < 9; ++i) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(uint8_t(data[i])) << " ";
-    }
     std::cout << std::endl;
     if (!WriteFile(this->devHandle, &tempData[0], tempData.size(), NULL, &ol))
     {
