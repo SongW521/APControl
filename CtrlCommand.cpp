@@ -212,8 +212,6 @@ void getDevRealRange(CmdType rceCmd, QString *realRange)
     int index1 = ((rceCmd.byte[3] & 0x0F) + 1) % 16;
     int index2 = ((rceCmd.byte[5] & 0x0F) + 1) % 16;
 
-    qDebug() << index1 << " "  <<index2  ;
-
     realRange[0] = stdRange[index1];
     realRange[1] = stdRange[index2];
 
